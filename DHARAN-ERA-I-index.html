@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DHARAN ERA I</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101820;color:#fff;font:15px system-ui;overflow:hidden}
+#top{position:absolute;z-index:3;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.pill{background:#101820dd;border:1px solid #ffffff35;border-radius:12px;padding:8px 11px;font-weight:700}
+canvas{display:block;width:100vw;height:100dvh;background:#83b96b;touch-action:none}
+#panel{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,430px);max-height:78vh;overflow:auto;background:#111d;color:white;border:1px solid #ffffff55;border-radius:18px;padding:18px;box-shadow:0 12px 40px #0009}
+h1{font-size:26px;margin:0 0 8px}h2{font-size:20px;margin:0 0 10px}p{color:#d5e2e8}
+button,select{background:#e9f3f4;color:#10212a;border:0;border-radius:10px;padding:11px 14px;font-weight:700;margin:4px;cursor:pointer}
+button.primary{background:#ffcb45}button:disabled{opacity:.4}
+#controls{position:absolute;z-index:2;bottom:18px;left:14px;display:grid;grid-template-columns:52px 52px 52px;grid-template-rows:52px 52px;gap:5px}
+#controls button{margin:0;background:#10202acc;color:white;border:1px solid #ffffff55;font-size:20px;touch-action:none}
+#actions{position:absolute;z-index:2;bottom:22px;right:12px;display:flex;flex-direction:column}
+#actions button{background:#10202acc;color:white;border:1px solid #ffffff55;margin:3px}
+#hint{position:absolute;z-index:2;bottom:150px;left:50%;transform:translateX(-50%);background:#101820dd;padding:8px 12px;border-radius:10px;text-align:center;max-width:90vw}
+.small{font-size:12px;color:#b9cbd3}
+</style></head>
+<body>
+<div id="top"><div class="pill">DHARAN ERA I</div><div class="pill" id="cash">Cash: ₹0</div><div class="pill" id="who">NUBAHANG</div></div>
+<canvas id="game"></canvas>
+<div id="hint">Choose a character to start</div>
+<div id="controls">
+<button style="grid-column:2;grid-row:1" data-dir="up">▲</button>
+<button style="grid-column:1;grid-row:2" data-dir="left">◀</button>
+<button style="grid-column:2;grid-row:2" data-dir="down">▼</button>
+<button style="grid-column:3;grid-row:2" data-dir="right">▶</button>
+</div>
+<div id="actions"><button id="interact">INTERACT</button><button id="talk">TALK</button><button id="guitar">PLAY GUITAR</button></div>
+<div id="panel"><h1>DHARAN ERA I</h1><p>Welcome to your open-world city. Choose your character.</p>
+<div id="choices"></div><p class="small">Move with the arrow buttons or WASD. Walk near a place and tap INTERACT.</p></div>
+<script>
+(()=>{
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),panel=document.querySelector('#panel'),hint=document.querySelector('#hint');
+let W=1800,H=1300,scale=1,cam={x:0,y:0},player={x:160,y:160,speed:3},cash=500,character='NUBAHANG',started=false,ride='On foot';
+const keys={},held={};let nearby=null;
+const places=[
+{name:'Tea Shop',x:260,y:270,w:130,h:85,items:[['Milk Tea',30],['Coffee',60],['Momo',100]]},
+{name:'Sunrise Store',x:680,y:170,w:150,h:90,items:[['Water Bottle',25],['Backpack',250],['Headphones',350]]},
+{name:'Ruti Wai Wai',x:1250,y:260,w:150,h:90,items:[['Wai Wai Noodles',30],['Wai Wai Snack',40]]},
+{name:'Clothing Store',x:280,y:850,w:170,h:100,items:[['Baggy Pants',450],['Striped Pants',400],['Puff Pants',500],['Oversized Hoodie',650],['Rock Hoodie',700],['Graphic T-Shirt',300],['Sneakers',550]]},
+{name:'Garage',x:900,y:920,w:150,h:100,items:[['Lamborghini',5000],['Sports Car',2500],['Jeep',1800],['Motorbike',900],['Scooter',500]]},
+{name:'Mission HQ',x:1450,y:900,w:160,h:100,items:[['Delivery Mission',0,5900],['City Cleanup',0,5900],['Taxi Mission',0,10000]]},
+{name:'House 1',x:160,y:1080,w:130,h:90,items:[['Sleep and Rest',0]]},
+{name:'House 2',x:620,y:1080,w:130,h:90,items:[['Sleep and Rest',0]]},
+{name:'Hostel 1',x:1100,y:550,w:130,h:90,items:[['Rest',50]]},
+{name:'Hostel 2',x:1450,y:500,w:130,h:90,items:[['Rest',50]]},
+{name:'Hostel 3',x:850,y:350,w:130,h:90,items:[['Rest',50]]},
+{name:'AUNTY KO DOKAN',x:900,y:180,w:170,h:95,items:[['Tea',25],['Pops',40],['Bullred Drink',80],['Cigarette Pack (fictional)',100]]}
+];
+const npcNames=['NIYAM','BINAMRA','SAUJAN','ARBIN','RONISH'];
+function resize(){canvas.width=innerWidth*devicePixelRatio;canvas.height=innerHeight*devicePixelRatio;scale=devicePixelRatio;ctx.setTransform(scale,0,0,scale,0,0)}addEventListener('resize',resize);resize();
+function choose(name){character=name;started=true;document.querySelector('#who').textContent=name;panel.style.display='none';hint.textContent='Explore the city. Find shops and Mission HQ.'}
+document.querySelector('#choices').innerHTML=['NUBAHANG','IN SU HANG','SAI MONA'].map(n=>`<button class="primary" data-char="${n}">${n}</button>`).join('');
+document.querySelectorAll('[data-char]').forEach(b=>b.onclick=()=>choose(b.dataset.char));
+function draw(){let vw=innerWidth,vh=innerHeight;ctx.clearRect(0,0,vw,vh);ctx.save();ctx.translate(-cam.x,-cam.y);
+ctx.fillStyle='#7db76a';ctx.fillRect(0,0,W,H);
+ctx.fillStyle='#555e62';for(let y=80;y<H;y+=300)ctx.fillRect(0,y,W,58);for(let x=80;x<W;x+=360)ctx.fillRect(x,0,55,H);
+ctx.strokeStyle='#e8d78b';ctx.setLineDash([18,18]);for(let y=109;y<H;y+=300){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}for(let x=107;x<W;x+=360){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}ctx.setLineDash([]);
+places.forEach(p=>{ctx.fillStyle='#e5c28a';ctx.fillRect(p.x,p.y,p.w,p.h);ctx.fillStyle='#8c4b35';ctx.fillRect(p.x,p.y,p.w,18);ctx.fillStyle='#15252b';ctx.font='bold 13px system-ui';ctx.fillText(p.name,p.x,p.y-8);});
+npcNames.forEach((n,i)=>{let x=900+i*34,y=310;ctx.fillStyle='#6b3d91';ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.fill();ctx.fillStyle='white';ctx.font='10px system-ui';ctx.fillText(n,x-13,y+23)});
+ctx.fillStyle=character==='SAI MONA'?'#9c64d9':'#263c91';ctx.beginPath();ctx.arc(player.x,player.y,13,0,7);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(player.x-4,player.y-4,3,0,7);ctx.fill();
+ctx.restore();cam.x=Math.max(0,Math.min(W-vw,player.x-vw/2));cam.y=Math.max(0,Math.min(H-vh,player.y-vh/2));
+nearby=places.find(p=>Math.hypot((p.x+p.w/2)-player.x,(p.y+p.h/2)-player.y)<105)||null;
+hint.textContent=nearby?'Near: '+nearby.name+' — tap INTERACT':'Explore the city and find places';
+document.querySelector('#cash').textContent='Cash: ₹'+cash;
+}
+function move(){if(!started)return;let dx=0,dy=0;if(keys.ArrowUp||keys.w||held.up)dy--;if(keys.ArrowDown||keys.s||held.down)dy++;if(keys.ArrowLeft||keys.a||held.left)dx--;if(keys.ArrowRight||keys.d||held.right)dx++;let l=Math.hypot(dx,dy)||1;player.x=Math.max(15,Math.min(W-15,player.x+dx/l*player.speed));player.y=Math.max(15,Math.min(H-15,player.y+dy/l*player.speed));}
+function loop(){move();draw();requestAnimationFrame(loop)}loop();
+document.querySelectorAll('[data-dir]').forEach(b=>{let d=b.dataset.dir;b.onpointerdown=e=>{e.preventDefault();held[d]=true};b.onpointerup=b.onpointerleave=()=>held[d]=false});
+addEventListener('keydown',e=>keys[e.key]=true);addEventListener('keyup',e=>keys[e.key]=false);
+function openPlace(){if(!nearby){hint.textContent='Walk closer to a shop or building.';return}let html=`<h2>${nearby.name}</h2><p>Choose an option:</p>`;nearby.items.forEach((it,i)=>{let reward=it[2]||0;html+=`<button class="primary" data-buy="${i}">${it[0]} — ${reward?'Reward ₹'+reward:'Price ₹'+it[1]}</button>`});html+='<p><button id="close">Back to game</button></p>';panel.innerHTML=html;panel.style.display='block';panel.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{let it=nearby.items[+b.dataset.buy],reward=it[2]||0;if(reward){cash+=reward;hint.textContent=it[0]+' completed! Earned ₹'+reward;if(nearby.name==='Garage')ride=it[0]}else if(cash>=it[1]){cash-=it[1];hint.textContent='Purchased '+it[0]}else{hint.textContent='Not enough cash!'}document.querySelector('#cash').textContent='Cash: ₹'+cash});panel.querySelector('#close').onclick=()=>panel.style.display='none'}
+document.querySelector('#interact').onclick=openPlace;
+document.querySelector('#talk').onclick=()=>{if(Math.hypot(player.x-970,player.y-310)<180)hint.textContent='NIYAM: Hey! Welcome to Aunty Ko Dokan!';else hint.textContent='No one nearby to talk to.'};
+document.querySelector('#guitar').onclick=()=>{if(character==='SAI MONA'){cash+=50;hint.textContent='Sai Mona played guitar and earned ₹50!'}else hint.textContent='Choose Sai Mona to play guitar.'};
+})();
+</script></body></html>
